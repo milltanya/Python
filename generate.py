@@ -1,4 +1,5 @@
 import random
+import numpy
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -43,17 +44,6 @@ def download_model(input_file, data):
     f.close()
 
 
-def weighted_choice(choices):
-    total = sum(choices[c] for c in choices)
-    r = random.uniform(0, total)
-    upto = 0
-    for c in choices:
-        if upto + choices[c] >= r:
-            return c
-        upto += choices[c]
-    return random.sample(data.keys(), 1)[0]
-
-
 def print_word(word, output_file):
     if output_file == "stdout":
         print(word, end='')
@@ -71,7 +61,14 @@ if par.out[0] != "stdout":
     f = open(par.out[0], 'w')
 print_word(cur_word, par.out[0])
 for i in range(par.len[0] - 1):
-    next_word = weighted_choice(data.get(cur_word, {}))
+    words = data.get(cur_word, {})
+    if words == {}:
+        next_word = random.sample(data.keys(), 1)[0]
+    else:
+        total = sum(words[c] for c in words)
+        new_words = [elem for elem in words]
+        probs = [elem/total for elem in words.values()]
+        next_word = numpy.random.choice(new_words, 1, probs)[0]
     print_word(" " + next_word, par.out[0])
     cur_word = next_word
 if par.out[0] != "stdout":
