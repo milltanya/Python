@@ -26,39 +26,21 @@ parser.add_argument('--length',
 parser.add_argument('--output ',
                     action='store',
                     nargs=1,
-                    default='',
+                    default=['stdout'],
                     type=str,
                     help="path to the file where the text will locate",
                     dest='out')
 par = parser.parse_args()
 
-f = open(par.mod[0], 'r')
-data = {}
-for line in f:
-    tmp = line.split()
-    tmp1 = data.pop(tmp[0], {})
-    tmp1.update({tmp[1]: int(tmp[2])})
-    data.update({tmp[0]: tmp1})
-f.close()
 
-length = par.len[0]
-if par.seed == "":
-    k = random.randint(0, len(data)-1)
-    i = 0
-    for j in data:
-        i += 1
-        if i == k:
-            break
-    word = j
-else:
-    word = par.seed[0]
-k = 0
-if word == 'END':
-    word = 'BEGIN'
-if word == "BEGIN":
-    s = ''
-else:
-    s = word
+def download_model(input_file, data):
+    f = open(input_file, 'r')
+    for line in f:
+        words = line.split()
+        first_word_data = data.pop(words[0], {})
+        first_word_data.update({words[1]: int(words[2])})
+        data.update({words[0]: first_word_data})
+    f.close()
 
 
 def weighted_choice(choices):
@@ -69,21 +51,28 @@ def weighted_choice(choices):
         if upto + choices[c] >= r:
             return c
         upto += choices[c]
-    assert False, "Shouldn't get here"
+    return random.sample(data.keys(), 1)[0]
 
 
-while (k < length):
-    next_word = weighted_choice(data.get(word, {}))
-    if next_word != 'END':
-        s = s + " " + next_word
-        word = next_word
-        k += 1
+def print_word(word, output_file):
+    if output_file == "stdout":
+        print(word, end='')
     else:
-        word = "BEGIN"
+        f.write(word)
 
-if par.out == "":
-    print(s)
+
+data = {}
+download_model(par.mod[0], data)
+if par.seed == "":
+    cur_word = random.sample(data.keys(), 1)[0]
 else:
+    cur_word = par.seed[0]
+if par.out[0] != "stdout":
     f = open(par.out[0], 'w')
-    f.write(s)
+print_word(cur_word, par.out[0])
+for i in range(par.len[0] - 1):
+    next_word = weighted_choice(data.get(cur_word, {}))
+    print_word(" " + next_word, par.out[0])
+    cur_word = next_word
+if par.out[0] != "stdout":
     f.close()
