@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input-dir',
                     action='store',
                     nargs='+',
-                    default='',
+                    default='stdin',
                     type=str,
                     required=False,
                     help="directories where input files locate",
@@ -24,48 +24,48 @@ parser.add_argument('--lc',
                     action='store_true',
                     default=False,
                     required=False,
-                    help="lowercase input",
+                    help="lowercase",
                     dest='lc')
 par = parser.parse_args()
 
 
-def parse_line(line):
-    global par
+def parse_line(line, data, prev_word, lowercase):
     if par.lc:
         line = line.lower()
-    global prev_word
-    global data
     words = re.findall(r"\w+", line)
-    for word in words:
-        tmp1 = data.pop(prev_word, {})
-        tmp2 = tmp1.pop(word, 0)
-        tmp1.update({word: tmp2+1})
-        data.update({prev_word: tmp1})
-        prev_word = word
+    for cur_word in words:
+        if prev_word != "":
+            prev_word_data = data.pop(prev_word, {})
+            pair_freq = prev_word_data.pop(cur_word, 0)
+            prev_word_data.update({cur_word: pair_freq + 1})
+            data.update({prev_word: prev_word_data})
+        prev_word = cur_word
+
+
+def input(input_dir, data, prev_word, lowercase):
+    if input_dir == 'stdin':
+        for line in sys.stdin:
+            parse_line(line, data, prev_word, lowercase)
+    else:
+        for _dir in par.dir:
+            files = os.listdir(_dir)
+            for _file in files:
+                f = open(_dir+'/'+_file, 'r')
+                for line in f:
+                    parse_line(line, data, prev_word, lowercase)
+                f.close()
+
+
+def output(output_file, data):
+    f = open(output_file, 'w')
+    for first_word in data:
+        for second_word in data.get(first_word, {}):
+            f.write(first_word + " " + second_word + " " +
+                    str(data[first_word][second_word]) + "\n")
+    f.close()
+
 
 data = {}
-prev_word = "BEGIN"
-if par.dir == '':
-    s = input()
-    while s != '\0':
-        parse_line(s)
-        s = input()
-else:
-    for _dir in par.dir:
-        files = os.listdir(_dir)
-        for _file in files:
-            f = open(_dir+'/'+_file, 'r')
-            for line in f:
-                parse_line(line)
-            f.close()
-word = "END"
-tmp1 = data.pop(prev_word, {})
-tmp2 = tmp1.pop(word, 0)
-tmp1.update({word: tmp2+1})
-data.update({prev_word: tmp1})
-
-f = open(par.mod[0], 'w')
-for word1 in data:
-    for word2 in data.get(word1, {}):
-        f.write(word1+" "+word2+" "+str(data[word1][word2])+"\n")
-f.close()
+prev_word = ""
+input(par.dir, data, prev_word, par.lc)
+output(par.mod[0], data)
