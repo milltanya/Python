@@ -57,8 +57,9 @@ def morph_parse_line(line, data, prev_word, morph):
         parse_cur_word = morph.parse(cur_word)
         for prev in prev_word:
             for word in parse_cur_word:
-                add_pair(prev, word.normal_form, data[0])
-                add_pair(prev, word.tag, data[1])
+                if prev != "":
+                    add_pair(prev, word.normal_form, data[0])
+                    add_pair(prev, word.tag, data[1])
         prev_word = [word.normal_form for word in parse_cur_word]
 
 
@@ -98,8 +99,8 @@ def output(output_file, data, morphology):
         f.write(str(i) + "\n")
         for first_word in pairs:
             for second_word in pairs.get(first_word, {}):
-                f.write(first_word + " " + str(second_word) + " " +
-                        str(pairs[first_word][second_word]) + "\n")
+                f.write(first_word + " " + str(second_word).replace(',', ' ') +
+                        " " + str(pairs[first_word][second_word]) + "\n")
         i += 1
     f.close()
 

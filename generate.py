@@ -94,19 +94,19 @@ def morph_generate(data, f, seed, length):
     for i in range(length - 1):
         next_lex = choice(data[1].get(cur_word, {}))
         if next_lex == "":
-            next_word = random.sample(data[1].keys(), 1)[0]    # выбрали начальную форму слова
+            next_word = random.sample(data[1].keys(), 1)[0]
         else:
             # print(next_lex)
             next_lexemes = []
-            for elem in morph.parse(next_lex):   # нашли его всевозможные разборы
+            for elem in morph.parse(next_lex):
                 next_lexemes = next_lexemes + elem.lexeme
             # print(next_lexemes)
-            morph_data = data[2].get(cur_word, {})             # скопировали в отдельный словарь всевозсожные
-            flag = False                                       # формы слова, идущие за предыдущим
-            while (not flag) and morph_data != {}:             # перебираем по грамматическим формам
+            morph_data = data[2].get(cur_word, {})
+            flag = False
+            while (not flag) and morph_data != {}:
                 next_morph = choice(morph_data)
                 # print(next_morph)
-                next_morphemes = next_morph.split()            # разбираем на отдельные свойства
+                next_morphemes = next_morph.split()
                 for lexeme in next_lexemes:
                     flag = True
                     for morpheme in next_morphemes:
