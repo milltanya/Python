@@ -1,5 +1,6 @@
 import random
 import numpy
+import pymorphy2
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -34,42 +35,107 @@ parser.add_argument('--output ',
 par = parser.parse_args()
 
 
-def download_model(input_file, data):
+def add_pair(first_word, second_word, freq, data):
+    first_word_data = data.pop(first_word, {})
+    first_word_data.update({second_word: freq})
+    data.update({first_word: first_word_data})
+
+
+def download_model(input_file):
     f = open(input_file, 'r')
+    data = [False, {}]
+    k = 0
     for line in f:
-        words = line.split()
-        first_word_data = data.pop(words[0], {})
-        first_word_data.update({words[1]: int(words[2])})
-        data.update({words[0]: first_word_data})
+        if line == "morph\n":
+            data = [True, {}, {}]
+        elif line == "1\n":
+            k = 1
+        elif line == "2\n":
+            k = 2
+        else:
+            words = line.split()
+            add_pair(words[0], ' '.join(words[1:-1]), int(words[-1]), data[k])
     f.close()
+    return data
 
 
-def print_word(word, output_file):
-    if output_file == "stdout":
+def print_word(word, f):
+    if f == "stdout":
         print(word, end='')
     else:
         f.write(word)
 
 
-data = {}
-download_model(par.mod[0], data)
+def choice(data):
+    if data == {}:
+        return ""
+    else:
+        new_words = [elem for elem in data]
+        total = sum(data[c] for c in data)
+        probs = [elem / total for elem in data.values()]
+        return numpy.random.choice(new_words, 1, probs)[0]
+
+
+def generate(data, f, seed, length):
+    cur_word = seed
+    print_word(cur_word, f)
+    for i in range(length - 1):
+        next_word = choice(data[1].get(cur_word, {}))
+        if next_word == "":
+            next_word = random.sample(data[1].keys(), 1)[0]
+        print_word(" " + next_word, f)
+        cur_word = next_word
+
+
+def morph_generate(data, f, seed, length):
+    morph = pymorphy2.MorphAnalyzer()
+    cur_word = seed
+    print_word(cur_word, f)
+    for i in range(length - 1):
+        next_lex = choice(data[1].get(cur_word, {}))
+        if next_lex == "":
+            next_word = random.sample(data[1].keys(), 1)[0]    # выбрали начальную форму слова
+        else:
+            # print(next_lex)
+            next_lexemes = []
+            for elem in morph.parse(next_lex):   # нашли его всевозможные разборы
+                next_lexemes = next_lexemes + elem.lexeme
+            # print(next_lexemes)
+            morph_data = data[2].get(cur_word, {})             # скопировали в отдельный словарь всевозсожные
+            flag = False                                       # формы слова, идущие за предыдущим
+            while (not flag) and morph_data != {}:             # перебираем по грамматическим формам
+                next_morph = choice(morph_data)
+                # print(next_morph)
+                next_morphemes = next_morph.split()            # разбираем на отдельные свойства
+                for lexeme in next_lexemes:
+                    flag = True
+                    for morpheme in next_morphemes:
+                        if morpheme not in lexeme.tag:
+                            flag = False
+                            break
+                    if flag:
+                        next_word = lexeme.word
+                        break
+                morph_data.pop(next_morph, {})
+            if not flag:
+                next_word = next_lex
+        print_word(" " + next_word, f)
+        cur_word = next_word
+
+
+data = download_model(par.mod[0])
+# print(data)
 if par.seed == "":
-    cur_word = random.sample(data.keys(), 1)[0]
+    seed = random.sample(data[1].keys(), 1)[0]
 else:
-    cur_word = par.seed[0]
+    seed = par.seed[0]
 if par.out[0] != "stdout":
     f = open(par.out[0], 'w')
-print_word(cur_word, par.out[0])
-for i in range(par.len[0] - 1):
-    words = data.get(cur_word, {})
-    if words == {}:
-        next_word = random.sample(data.keys(), 1)[0]
-    else:
-        total = sum(words[c] for c in words)
-        new_words = [elem for elem in words]
-        probs = [elem/total for elem in words.values()]
-        next_word = numpy.random.choice(new_words, 1, probs)[0]
-    print_word(" " + next_word, par.out[0])
-    cur_word = next_word
+else:
+    f = "stdout"
+if data[0]:
+    morph_generate(data, f, seed, par.len[0])
+else:
+    generate(data, f, seed, par.len[0])
 if par.out[0] != "stdout":
     f.close()
