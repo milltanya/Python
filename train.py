@@ -1,5 +1,6 @@
 import re
 import argparse
+import pymorphy2
 import os
 
 parser = argparse.ArgumentParser()
@@ -26,46 +27,86 @@ parser.add_argument('--lc',
                     required=False,
                     help="lowercase",
                     dest='lc')
+parser.add_argument('--morph',
+                    action='store_true',
+                    default=False,
+                    required=False,
+                    help="morphology",
+                    dest='mor')
 par = parser.parse_args()
 
 
-def parse_line(line, data, prev_word, lowercase):
-    if par.lc:
-        line = line.lower()
+def add_pair(first_word, second_word, data):
+    first_word_data = data.pop(first_word, {})
+    pair_freq = first_word_data.pop(second_word, 0)
+    first_word_data.update({second_word: pair_freq + 1})
+    data.update({first_word: first_word_data})
+
+
+def parse_line(line, data, prev_word):
     words = re.findall(r"\w+", line)
     for cur_word in words:
-        if prev_word != "":
-            prev_word_data = data.pop(prev_word, {})
-            pair_freq = prev_word_data.pop(cur_word, 0)
-            prev_word_data.update({cur_word: pair_freq + 1})
-            data.update({prev_word: prev_word_data})
-        prev_word = cur_word
+        if prev_word[0] != "":
+            add_pair(prev_word[0], cur_word, data[0])
+        prev_word = [cur_word]
 
 
-def input(input_dir, data, prev_word, lowercase):
+def morph_parse_line(line, data, prev_word, morph):
+    words = re.findall(r"\w+", line)
+    for cur_word in words:
+        parse_cur_word = morph.parse(cur_word)
+        for prev in prev_word:
+            for word in parse_cur_word:
+                add_pair(prev, word.normal_form, data[0])
+                add_pair(prev, word.tag, data[1])
+        prev_word = [word.normal_form for word in parse_cur_word]
+
+
+def input(input_dir, data, lowercase, morphology):
+    prev_word = [""]
+    if morphology:
+        morph = pymorphy2.MorphAnalyzer()
     if input_dir == 'stdin':
         for line in sys.stdin:
-            parse_line(line, data, prev_word, lowercase)
+            if lowercase:
+                line = line.lower()
+            if morphology:
+                morph_parse_line(line, data, prev_word, morph)
+            else:
+                parse_line(line, data, prev_word)
     else:
         for _dir in par.dir:
             files = os.listdir(_dir)
             for _file in files:
                 f = open(_dir+'/'+_file, 'r')
                 for line in f:
-                    parse_line(line, data, prev_word, lowercase)
+                    if lowercase:
+                        line = line.lower()
+                    if morphology:
+                        morph_parse_line(line, data, prev_word, morph)
+                    else:
+                        parse_line(line, data, prev_word)
                 f.close()
 
 
-def output(output_file, data):
+def output(output_file, data, morphology):
     f = open(output_file, 'w')
-    for first_word in data:
-        for second_word in data.get(first_word, {}):
-            f.write(first_word + " " + second_word + " " +
-                    str(data[first_word][second_word]) + "\n")
+    if morphology:
+        f.write("morph\n")
+    i = 1
+    for pairs in data:
+        f.write(str(i) + "\n")
+        for first_word in pairs:
+            for second_word in pairs.get(first_word, {}):
+                f.write(first_word + " " + str(second_word) + " " +
+                        str(pairs[first_word][second_word]) + "\n")
+        i += 1
     f.close()
 
 
-data = {}
-prev_word = ""
-input(par.dir, data, prev_word, par.lc)
-output(par.mod[0], data)
+if par.mor:
+    data = [{}, {}]
+else:
+    data = [{}]
+input(par.dir, data, par.lc, par.mor)
+output(par.mod[0], data, par.mor)
