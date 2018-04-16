@@ -37,18 +37,18 @@ par = parser.parse_args()
 
 
 def add_pair(first_word, second_word, data):
-    first_word_data = data.pop(first_word, {})
+    first_word_data = data[0].pop(first_word, {})
     pair_freq = first_word_data.pop(second_word, 0)
     first_word_data.update({second_word: pair_freq + 1})
-    data.update({first_word: first_word_data})
+    data[0].update({first_word: first_word_data})
 
 
 def parse_line(line, data, prev_word):
     words = re.findall(r"\w+", line)
     for cur_word in words:
         if prev_word[0] != "":
-            add_pair(prev_word[0], cur_word, data[0])
-        prev_word = [cur_word]
+            add_pair(prev_word[0], cur_word, data)
+        prev_word[0] = cur_word
 
 
 def morph_parse_line(line, data, prev_word, morph):
@@ -58,8 +58,8 @@ def morph_parse_line(line, data, prev_word, morph):
         for prev in prev_word:
             for word in parse_cur_word:
                 if prev != "":
-                    add_pair(prev, word.normal_form, data[0])
-                    add_pair(prev, word.tag, data[1])
+                    add_pair(prev, word.normal_form, data)
+                    add_pair(prev, word.tag, [data[1]])
         prev_word = [word.normal_form for word in parse_cur_word]
 
 
