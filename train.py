@@ -37,6 +37,13 @@ par = parser.parse_args()
 
 
 def add_pair(first_word, second_word, data):
+    """adda a pair of words into the data
+
+    :param first_word: first word
+    :param second_word: second word
+    :param data: data
+    :return: nothing
+    """
     first_word_data = data[0].pop(first_word, {})
     pair_freq = first_word_data.pop(second_word, 0)
     first_word_data.update({second_word: pair_freq + 1})
@@ -44,6 +51,13 @@ def add_pair(first_word, second_word, data):
 
 
 def parse_line(line, data, prev_word):
+    """parse a line
+
+    :param line: line to parse
+    :param data: data
+    :param prev_word: previous word
+    :return: nothing
+    """
     words = re.findall(r"\w+", line)
     for cur_word in words:
         if prev_word[0] != "":
@@ -52,6 +66,14 @@ def parse_line(line, data, prev_word):
 
 
 def morph_parse_line(line, data, prev_word, morph):
+    """parse a line using morphology
+
+    :param line: line
+    :param data: data
+    :param prev_word: previous_word
+    :param morph: morph file from PyMorphy2
+    :return: nothing
+    """
     words = re.findall(r"\w+", line)
     for cur_word in words:
         parse_cur_word = morph.parse(cur_word)
@@ -64,6 +86,14 @@ def morph_parse_line(line, data, prev_word, morph):
 
 
 def input(input_dir, data, lowercase, morphology):
+    """making a data from text
+
+    :param input_dir: input directory
+    :param data: data
+    :param lowercase: make the text in lowercase or not
+    :param morphology: using morphology or not
+    :return: nothing
+    """
     prev_word = [""]
     if morphology:
         morph = pymorphy2.MorphAnalyzer()
@@ -91,6 +121,13 @@ def input(input_dir, data, lowercase, morphology):
 
 
 def output(output_file, data, morphology):
+    """write the base to the model
+
+    :param output_file: output file
+    :param data: data
+    :param morphology: if morphology is used
+    :return: nothing
+    """
     f = open(output_file, 'w')
     i = 1
     for pairs in data:

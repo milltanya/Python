@@ -37,12 +37,25 @@ par = parser.parse_args()
 
 
 def add_pair(first_word, second_word, freq, data):
+    """add a pair of words into the data
+
+    :param first_word: first word
+    :param second_word: second word
+    :param freq: frequency
+    :param data: data
+    :return: nothing
+    """
     first_word_data = data.pop(first_word, {})
     first_word_data.update({second_word: freq})
     data.update({first_word: first_word_data})
 
 
 def download_model(input_file):
+    """download model
+
+    :param input_file: input file
+    :return: data
+    """
     f = open(input_file, 'r')
     data = [False, {}, {}]
     for line in f:
@@ -61,6 +74,11 @@ def download_model(input_file):
 
 
 def print_word(word):
+    """print word
+
+    :param word: word
+    :return: nothing
+    """
     if "text" not in dir(print_word):
         print_word.text = ""
     if word == "\n":
@@ -76,6 +94,11 @@ def print_word(word):
 
 
 def choice(data):
+    """choose a word from data
+
+    :param data: data
+    :return: word
+    """
     if data == {}:
         return ""
     else:
@@ -86,6 +109,13 @@ def choice(data):
 
 
 def generate(data, seed, length):
+    """generate a text from data
+
+    :param data: data
+    :param seed: first word
+    :param length: the number of words
+    :return: nothing
+    """
     cur_word = seed
     print_word(cur_word)
     for i in range(length - 1):
@@ -98,6 +128,13 @@ def generate(data, seed, length):
 
 
 def morph_generate(data, seed, length):
+    """generate a text from data using morphology
+
+    :param data: data
+    :param seed: first word
+    :param length: the number of word
+    :return: nothing
+    """
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
     print_word(cur_word)
