@@ -1,4 +1,5 @@
 import random
+import sys
 import numpy
 import pymorphy2
 import argparse
@@ -43,27 +44,35 @@ def add_pair(first_word, second_word, freq, data):
 
 def download_model(input_file):
     f = open(input_file, 'r')
-    data = [False, {}]
-    k = 0
+    data = [False, {}, {}]
     for line in f:
-        if line == "morph\n":
-            data = [True, {}, {}]
-        elif line == "1\n":
-            k = 1
-        elif line == "2\n":
-            k = 2
+        if line == "lex\n":
+            pass
+        elif line == "morph\n":
+            data[0] = True
         else:
             words = line.split()
-            add_pair(words[0], ' '.join(words[1:-1]), int(words[-1]), data[k])
+            if not data[0]:
+                add_pair(words[0], ' '.join(words[1:-1]), int(words[-1]), data[1])
+            else:
+                add_pair(words[0], ' '.join(words[1:-1]), int(words[-1]), data[2])
     f.close()
     return data
 
 
-def print_word(word, f):
-    if f == "stdout":
-        print(word, end='')
+def print_word(word):
+    if "text" not in dir(print_word):
+        print_word.text = ""
+    if word == "\n":
+        print(print_word.text)
+        print_word.text = ""
     else:
-        f.write(word)
+        if print_word.text != "":
+            print_word.text += " "
+        print_word.text += word
+        if len(print_word.text) > 100:
+            print(print_word.text)
+            print_word.text = ""
 
 
 def choice(data):
@@ -71,41 +80,39 @@ def choice(data):
         return ""
     else:
         new_words = [elem for elem in data]
-        total = sum(data[c] for c in data)
+        total = sum(data.values())
         probs = [elem / total for elem in data.values()]
         return numpy.random.choice(new_words, 1, probs)[0]
 
 
-def generate(data, f, seed, length):
+def generate(data, seed, length):
     cur_word = seed
-    print_word(cur_word, f)
+    print_word(cur_word)
     for i in range(length - 1):
         next_word = choice(data[1].get(cur_word, {}))
         if next_word == "":
             next_word = random.sample(data[1].keys(), 1)[0]
-        print_word(" " + next_word, f)
+        print_word(next_word)
         cur_word = next_word
+    print_word("\n")
 
 
-def morph_generate(data, f, seed, length):
+def morph_generate(data, seed, length):
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
-    print_word(cur_word, f)
+    print_word(cur_word)
     for i in range(length - 1):
         next_lex = choice(data[1].get(cur_word, {}))
         if next_lex == "":
             next_word = random.sample(data[1].keys(), 1)[0]
         else:
-            # print(next_lex)
             next_lexemes = []
             for elem in morph.parse(next_lex):
                 next_lexemes = next_lexemes + elem.lexeme
-            # print(next_lexemes)
             morph_data = data[2].get(cur_word, {})
             flag = False
             while (not flag) and morph_data != {}:
                 next_morph = choice(morph_data)
-                # print(next_morph)
                 next_morphemes = next_morph.split()
                 for lexeme in next_lexemes:
                     flag = True
@@ -119,23 +126,21 @@ def morph_generate(data, f, seed, length):
                 morph_data.pop(next_morph, {})
             if not flag:
                 next_word = next_lex
-        print_word(" " + next_word, f)
+        print_word(next_word)
         cur_word = next_word
+    print_word("\n")
 
 
 data = download_model(par.mod[0])
-# print(data)
 if par.seed == "":
     seed = random.sample(data[1].keys(), 1)[0]
 else:
     seed = par.seed[0]
 if par.out[0] != "stdout":
-    f = open(par.out[0], 'w')
-else:
-    f = "stdout"
+    sys.stdout = open(par.out[0], 'w')
 if data[0]:
-    morph_generate(data, f, seed, par.len[0])
+    morph_generate(data, seed, par.len[0])
 else:
-    generate(data, f, seed, par.len[0])
+    generate(data, seed, par.len[0])
 if par.out[0] != "stdout":
-    f.close()
+    sys.stdout.close()

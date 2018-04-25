@@ -92,11 +92,12 @@ def input(input_dir, data, lowercase, morphology):
 
 def output(output_file, data, morphology):
     f = open(output_file, 'w')
-    if morphology:
-        f.write("morph\n")
     i = 1
     for pairs in data:
-        f.write(str(i) + "\n")
+        if i == 1:
+            f.write("lex\n")
+        elif i == 2:
+            f.write("morph\n")
         for first_word in pairs:
             for second_word in pairs.get(first_word, {}):
                 f.write(first_word + " " + str(second_word).replace(',', ' ') +
