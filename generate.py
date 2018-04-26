@@ -1,39 +1,5 @@
 import random
-import sys
 import numpy
-import pymorphy2
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--model ',
-                    action='store',
-                    nargs=1,
-                    type=str,
-                    required=True,
-                    help="path to the file where the model locates",
-                    dest='mod')
-parser.add_argument('--seed',
-                    action='store',
-                    nargs=1,
-                    default='',
-                    type=str,
-                    help="first word",
-                    dest='seed')
-parser.add_argument('--length',
-                    action='store',
-                    nargs=1,
-                    type=int,
-                    required=True,
-                    help="length",
-                    dest='len')
-parser.add_argument('--output ',
-                    action='store',
-                    nargs=1,
-                    default=['stdout'],
-                    type=str,
-                    help="path to the file where the text will locate",
-                    dest='out')
-par = parser.parse_args()
 
 
 def add_pair(first_word, second_word, freq, data):
@@ -66,9 +32,11 @@ def download_model(input_file):
         else:
             words = line.split()
             if not data[0]:
-                add_pair(words[0], ' '.join(words[1:-1]), int(words[-1]), data[1])
+                add_pair(words[0], ' '.join(words[1:-1]),
+                         int(words[-1]), data[1])
             else:
-                add_pair(words[0], ' '.join(words[1:-1]), int(words[-1]), data[2])
+                add_pair(words[0], ' '.join(words[1:-1]),
+                         int(words[-1]), data[2])
     f.close()
     return data
 
@@ -135,6 +103,7 @@ def morph_generate(data, seed, length):
     :param length: the number of word
     :return: nothing
     """
+    import pymorphy2
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
     print_word(cur_word)
@@ -168,16 +137,53 @@ def morph_generate(data, seed, length):
     print_word("\n")
 
 
-data = download_model(par.mod[0])
-if par.seed == "":
-    seed = random.sample(data[1].keys(), 1)[0]
-else:
-    seed = par.seed[0]
-if par.out[0] != "stdout":
-    sys.stdout = open(par.out[0], 'w')
-if data[0]:
-    morph_generate(data, seed, par.len[0])
-else:
-    generate(data, seed, par.len[0])
-if par.out[0] != "stdout":
-    sys.stdout.close()
+def main():
+    import sys
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model ',
+                        action='store',
+                        nargs=1,
+                        type=str,
+                        required=True,
+                        help="path to the file where the model locates",
+                        dest='mod')
+    parser.add_argument('--seed',
+                        action='store',
+                        nargs=1,
+                        default='',
+                        type=str,
+                        help="first word",
+                        dest='seed')
+    parser.add_argument('--length',
+                        action='store',
+                        nargs=1,
+                        type=int,
+                        required=True,
+                        help="length",
+                        dest='len')
+    parser.add_argument('--output ',
+                        action='store',
+                        nargs=1,
+                        default=['stdout'],
+                        type=str,
+                        help="path to the file where the text will locate",
+                        dest='out')
+    par = parser.parse_args()
+    data = download_model(par.mod[0])
+    if par.seed == "":
+        seed = random.sample(data[1].keys(), 1)[0]
+    else:
+        seed = par.seed[0]
+    if par.out[0] != "stdout":
+        sys.stdout = open(par.out[0], 'w')
+    if data[0]:
+        morph_generate(data, seed, par.len[0])
+    else:
+        generate(data, seed, par.len[0])
+    if par.out[0] != "stdout":
+        sys.stdout.close()
+
+
+if __name__ == "__main__":
+    main()

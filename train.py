@@ -1,39 +1,5 @@
 import re
-import argparse
-import pymorphy2
 import os
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--input-dir',
-                    action='store',
-                    nargs='+',
-                    default='stdin',
-                    type=str,
-                    required=False,
-                    help="directories where input files locate",
-                    metavar='Diretories',
-                    dest='dir')
-parser.add_argument('--model',
-                    action='store',
-                    nargs=1,
-                    type=str,
-                    required=True,
-                    help="path to the file where the model will be saved",
-                    metavar="Model_path",
-                    dest='mod')
-parser.add_argument('--lc',
-                    action='store_true',
-                    default=False,
-                    required=False,
-                    help="lowercase",
-                    dest='lc')
-parser.add_argument('--morph',
-                    action='store_true',
-                    default=False,
-                    required=False,
-                    help="morphology",
-                    dest='mor')
-par = parser.parse_args()
 
 
 def add_pair(first_word, second_word, data):
@@ -74,6 +40,7 @@ def morph_parse_line(line, data, prev_word, morph):
     :param morph: morph file from PyMorphy2
     :return: nothing
     """
+    import pymorphy2
     words = re.findall(r"\w+", line)
     for cur_word in words:
         parse_cur_word = morph.parse(cur_word)
@@ -96,6 +63,7 @@ def input(input_dir, data, lowercase, morphology):
     """
     prev_word = [""]
     if morphology:
+        import pymorphy2
         morph = pymorphy2.MorphAnalyzer()
     if input_dir == 'stdin':
         for line in sys.stdin:
@@ -106,7 +74,7 @@ def input(input_dir, data, lowercase, morphology):
             else:
                 parse_line(line, data, prev_word)
     else:
-        for _dir in par.dir:
+        for _dir in input_dir:
             files = os.listdir(_dir)
             for _file in files:
                 f = open(_dir+'/'+_file, 'r')
@@ -143,9 +111,46 @@ def output(output_file, data, morphology):
     f.close()
 
 
-if par.mor:
-    data = [{}, {}]
-else:
-    data = [{}]
-input(par.dir, data, par.lc, par.mor)
-output(par.mod[0], data, par.mor)
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input-dir',
+                        action='store',
+                        nargs='+',
+                        default='stdin',
+                        type=str,
+                        required=False,
+                        help="directories where input files locate",
+                        metavar='Diretories',
+                        dest='dir')
+    parser.add_argument('--model',
+                        action='store',
+                        nargs=1,
+                        type=str,
+                        required=True,
+                        help="path to the file where the model will be saved",
+                        metavar="Model_path",
+                        dest='mod')
+    parser.add_argument('--lc',
+                        action='store_true',
+                        default=False,
+                        required=False,
+                        help="lowercase",
+                        dest='lc')
+    parser.add_argument('--morph',
+                        action='store_true',
+                        default=False,
+                        required=False,
+                        help="morphology",
+                        dest='mor')
+    par = parser.parse_args()
+    if par.mor:
+        data = [{}, {}]
+    else:
+        data = [{}]
+    input(par.dir, data, par.lc, par.mor)
+    output(par.mod[0], data, par.mor)
+
+
+if __name__ == "__main__":
+    main()
