@@ -1,50 +1,39 @@
 import random
 import numpy
-
-
-def add_pair(first_word, second_word, freq, data):
-    """add a pair of words into the data
-
-    :param first_word: first word
-    :param second_word: second word
-    :param freq: frequency
-    :param data: data
-    :return: nothing
-    """
-    first_word_data = data.pop(first_word, {})
-    first_word_data.update({second_word: freq})
-    data.update({first_word: first_word_data})
+import pymorphy2
+import sys
+import argparse
+import train
 
 
 def download_model(input_file):
     """download model
 
-    :param input_file: input file
-    :return: data
+    :param input_file: input file (string)
+    :return: data (dict: {"lex": {...}, ...)
     """
-    f = open(input_file, 'r')
-    data = [False, {}, {}]
-    for line in f:
+    model = open(input_file, 'r')
+    data = {}
+    part_of_base = ""
+    for line in model:
         if line == "lex\n":
-            pass
+            part_of_base = "lex"
+            data.update({"lex": {}})
         elif line == "morph\n":
-            data[0] = True
+            part_of_base = "morph"
+            data.update({"morph": {}})
         else:
             words = line.split()
-            if not data[0]:
-                add_pair(words[0], ' '.join(words[1:-1]),
-                         int(words[-1]), data[1])
-            else:
-                add_pair(words[0], ' '.join(words[1:-1]),
-                         int(words[-1]), data[2])
-    f.close()
+            train.add_pair_of_words(words[0], ' '.join(words[1:-1]),
+                                    int(words[-1]), data[part_of_base])
+    model.close()
     return data
 
 
 def print_word(word):
     """print word
 
-    :param word: word
+    :param word: word (string)
     :return: nothing
     """
     if "text" not in dir(print_word):
@@ -61,64 +50,64 @@ def print_word(word):
             print_word.text = ""
 
 
-def choice(data):
+def choose_word(data):
     """choose a word from data
 
-    :param data: data
-    :return: word
+    :param data: data (dict: {word: frequency, ...})
+    :return: word (string)
     """
     if data == {}:
         return ""
     else:
         new_words = [elem for elem in data]
         total = sum(data.values())
-        probs = [elem / total for elem in data.values()]
-        return numpy.random.choice(new_words, 1, probs)[0]
+        probabilities = [elem / total for elem in data.values()]
+        return numpy.random.choice(new_words, 1, probabilities)[0]
 
 
-def generate(data, seed, length):
+def generate_text(data, seed, length):
     """generate a text from data
 
-    :param data: data
-    :param seed: first word
-    :param length: the number of words
+    :param data: data (dict: {first_word: {second_word: frequency, ...}, ...})
+    :param seed: first word (string)
+    :param length: the number of words (int)
     :return: nothing
     """
     cur_word = seed
     print_word(cur_word)
     for i in range(length - 1):
-        next_word = choice(data[1].get(cur_word, {}))
+        next_word = choose_word(data.get(cur_word, {}))
         if next_word == "":
-            next_word = random.sample(data[1].keys(), 1)[0]
+            next_word = random.sample(data.keys(), 1)[0]
         print_word(next_word)
         cur_word = next_word
     print_word("\n")
 
 
-def morph_generate(data, seed, length):
+def generate_text_with_morphology(data_lex, data_morph, seed, length):
     """generate a text from data using morphology
 
-    :param data: data
-    :param seed: first word
-    :param length: the number of word
+    :param data_lex: data (dict: {first_word: {second_word: frequency, ...}, ...})
+    :param data_morph: data (dict: {first_word: {morph_parse: frequency, ...}, ...})
+    :param seed: first word (string)
+    :param length: the number of words (int)
     :return: nothing
     """
-    import pymorphy2
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
     print_word(cur_word)
     for i in range(length - 1):
-        next_lex = choice(data[1].get(cur_word, {}))
+        next_lex = choose_word(data_lex.get(cur_word, {}))
         if next_lex == "":
-            next_word = random.sample(data[1].keys(), 1)[0]
+            next_word = random.sample(data_lex.keys(), 1)[0]
         else:
             next_lexemes = []
             for elem in morph.parse(next_lex):
                 next_lexemes = next_lexemes + elem.lexeme
-            morph_data = data[2].get(cur_word, {})
+            morph_data = data_morph.get(cur_word, {})
             flag = False
             while (not flag) and morph_data != {}:
-                next_morph = choice(morph_data)
+                next_morph = choose_word(morph_data)
                 next_morphemes = next_morph.split()
                 for lexeme in next_lexemes:
                     flag = True
@@ -138,8 +127,6 @@ def morph_generate(data, seed, length):
 
 
 def main():
-    import sys
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--model ',
                         action='store',
@@ -177,10 +164,10 @@ def main():
         seed = par.seed[0]
     if par.out[0] != "stdout":
         sys.stdout = open(par.out[0], 'w')
-    if data[0]:
-        morph_generate(data, seed, par.len[0])
+    if "morph" in data.keys():
+        generate_text_with_morphology(data["lex"], data["morph"], seed, par.len[0])
     else:
-        generate(data, seed, par.len[0])
+        generate_text(data["lex"], seed, par.len[0])
     if par.out[0] != "stdout":
         sys.stdout.close()
 
