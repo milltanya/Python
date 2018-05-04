@@ -11,7 +11,7 @@ def add_pair_of_words(first_word, second_word, frequency, data):
     :param first_word: first word (string)
     :param second_word: second word (string)
     :param frequency: frequency (int)
-    :param data: database (dict: {first_word: {second_word: frequency, ...}, ...})
+    :param data: database (dict: {first_word: {second_word: frequency...}...})
     :return: nothing
     """
     first_word_data = data.pop(first_word, {})
@@ -24,7 +24,7 @@ def parse_line(line, data, prev_word):
     """parse a line and write pairs of words to data
 
     :param line: line to parse (string)
-    :param data: data (dict: {first_word: {second_word: frequency, ...}, ...})
+    :param data: data (dict: {first_word: {second_word: frequency...}...})
     :param prev_word: previous word (string)
     :return: nothing
     """
@@ -39,8 +39,8 @@ def parse_line_with_morph(line, data_lex, data_morph, prev_word):
     """parse a line using morphology
 
     :param line: line (string)
-    :param data_lex: data (dict: {first_word: {second_word: frequency, ...}, ...})
-    :param data_morph: data (dict: {first_word: {morph_parse: frequency, ...}, ...})
+    :param data_lex: data (dict: {first_word: {second_word: frequency...}...})
+    :param data_morph: data (dict: {first_word: {morph: frequency...}...})
     :param prev_word: previous_word (string)
     :param morph: morph file from PyMorphy2 (MorphAnalyzer)
     :return: nothing
@@ -83,7 +83,8 @@ def make_data_from_text(input_dir, lowercase, morphology):
             if lowercase:
                 line = line.lower()
             if morphology:
-                parse_line_with_morph(line, data["lex"], data["morph"], prev_word)
+                parse_line_with_morph(line, data["lex"],
+                                      data["morph"], prev_word)
             else:
                 parse_line(line, data["lex"], prev_word)
     return data
@@ -92,7 +93,7 @@ def make_data_from_text(input_dir, lowercase, morphology):
 def make_model(data, output_file):
     """write the base to the model
 
-    :param data: data (dict: {"lex": {...}, ...)
+    :param data: data (dict: {"lex": {...}...)
     :param output_file: output file (string)
     :return: nothing
     """
@@ -101,8 +102,9 @@ def make_model(data, output_file):
         model.write(base + "\n")
         for first_word in data[base]:
             for second_word in data[base].get(first_word, {}):
-                model.write(first_word + " " + str(second_word).replace(',', ' ') +
-                            " " + str(data[base][first_word][second_word]) + "\n")
+                model.write(first_word + " " +
+                            str(second_word).replace(',', ' ') + " " +
+                            str(data[base][first_word][second_word]) + "\n")
     model.close()
 
 

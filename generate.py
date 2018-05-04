@@ -10,7 +10,7 @@ def download_model(input_file):
     """download model
 
     :param input_file: input file (string)
-    :return: data (dict: {"lex": {...}, ...)
+    :return: data (dict: {"lex": {...}...)
     """
     model = open(input_file, 'r')
     data = {}
@@ -53,7 +53,7 @@ def print_word(word):
 def choose_word(data):
     """choose a word from data
 
-    :param data: data (dict: {word: frequency, ...})
+    :param data: data (dict: {word: frequency...})
     :return: word (string)
     """
     if data == {}:
@@ -68,7 +68,7 @@ def choose_word(data):
 def generate_text(data, seed, length):
     """generate a text from data
 
-    :param data: data (dict: {first_word: {second_word: frequency, ...}, ...})
+    :param data: data (dict: {first_word: {second_word: frequency...}...})
     :param seed: first word (string)
     :param length: the number of words (int)
     :return: nothing
@@ -87,8 +87,8 @@ def generate_text(data, seed, length):
 def generate_text_with_morphology(data_lex, data_morph, seed, length):
     """generate a text from data using morphology
 
-    :param data_lex: data (dict: {first_word: {second_word: frequency, ...}, ...})
-    :param data_morph: data (dict: {first_word: {morph_parse: frequency, ...}, ...})
+    :param data_lex: data (dict: {first_word: {second_word: frequency...}...})
+    :param data_morph: data (dict: {first_word: {morph: frequency...}...})
     :param seed: first word (string)
     :param length: the number of words (int)
     :return: nothing
@@ -165,7 +165,8 @@ def main():
     if par.out[0] != "stdout":
         sys.stdout = open(par.out[0], 'w')
     if "morph" in data.keys():
-        generate_text_with_morphology(data["lex"], data["morph"], seed, par.len[0])
+        generate_text_with_morphology(data["lex"], data["morph"],
+                                      seed, par.len[0])
     else:
         generate_text(data["lex"], seed, par.len[0])
     if par.out[0] != "stdout":
