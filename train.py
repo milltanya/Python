@@ -3,6 +3,7 @@ import os
 import pymorphy2
 import sys
 import argparse
+import pickle
 
 
 def add_pair_of_words(first_word, second_word, frequency, data):
@@ -54,7 +55,8 @@ def parse_line_with_morph(line, data_lex, data_morph, prev_word):
             for word in parse_cur_word:
                 if prev != "":
                     add_pair_of_words(prev, word.normal_form, 1, data_lex)
-                    add_pair_of_words(prev, word.tag, 1, data_morph)
+                    add_pair_of_words(prev, str(word.tag).replace(',', ' '),
+                                      1, data_morph)
         prev_word = [word.normal_form for word in parse_cur_word]
 
 
@@ -90,24 +92,6 @@ def make_data_from_text(input_dir, lowercase, morphology):
     return data
 
 
-def make_model(data, output_file):
-    """write the base to the model
-
-    :param data: data (dict: {"lex": {...}...)
-    :param output_file: output file (string)
-    :return: nothing
-    """
-    model = open(output_file, 'w')
-    for base in data:
-        model.write(base + "\n")
-        for first_word in data[base]:
-            for second_word in data[base].get(first_word, {}):
-                model.write(first_word + " " +
-                            str(second_word).replace(',', ' ') + " " +
-                            str(data[base][first_word][second_word]) + "\n")
-    model.close()
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-dir',
@@ -141,7 +125,9 @@ def main():
                         dest='mor')
     par = parser.parse_args()
     data = make_data_from_text(par.dir, par.lc, par.mor)
-    make_model(data, par.mod[0])
+    model = open(par.mod[0], 'wb')
+    pickle.dump(data, model)
+    model.close()
 
 
 if __name__ == "__main__":
