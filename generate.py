@@ -6,26 +6,26 @@ import argparse
 import pickle
 
 
-def print_word(word):
+def add_word_to_text(word):
     """print word
 
     :param word: word (string)
     :return: nothing
     """
-    if "text" not in dir(print_word):
-        print_word.text = ""
-    if "max" not in dir(print_word):
-        print_word.max = 2000
+    if "text" not in dir(add_word_to_text):
+        add_word_to_text.text = ""
+    if "max" not in dir(add_word_to_text):
+        add_word_to_text.max = 2000
     if word == "\n":
-        print(print_word.text)
-        print_word.text = ""
+        print(add_word_to_text.text)
+        add_word_to_text.text = ""
     else:
-        if print_word.text != "":
-            print_word.text += " "
-        print_word.text += word
-        if len(print_word.text) > print_word.max:
-            print(print_word.text)
-            print_word.text = ""
+        if add_word_to_text.text != "":
+            add_word_to_text.text += " "
+        add_word_to_text.text += word
+        if len(add_word_to_text.text) > add_word_to_text.max:
+            print(add_word_to_text.text)
+            add_word_to_text.text = ""
 
 
 def choose_word(data):
@@ -53,15 +53,15 @@ def generate_text(data, seed, length, paragraph):
     :return: nothing
     """
     cur_word = seed
-    print_word.max = paragraph
-    print_word(cur_word)
+    add_word_to_text.max = paragraph
+    add_word_to_text(cur_word)
     for i in range(length - 1):
         next_word = choose_word(data.get(cur_word, {}))
         if next_word == "":
             next_word = random.sample(data.keys(), 1)[0]
-        print_word(next_word)
+        add_word_to_text(next_word)
         cur_word = next_word
-    print_word("\n")
+    add_word_to_text("\n")
 
 
 def generate_text_with_morphology(data_lex, data_morph, seed,
@@ -77,8 +77,8 @@ def generate_text_with_morphology(data_lex, data_morph, seed,
     """
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
-    print_word.max = paragraph
-    print_word(cur_word)
+    add_word_to_text.max = paragraph
+    add_word_to_text(cur_word)
     for i in range(length - 1):
         next_lex = choose_word(data_lex.get(cur_word, {}))
         if next_lex == "":
@@ -104,9 +104,9 @@ def generate_text_with_morphology(data_lex, data_morph, seed,
                 morph_data.pop(next_morph, {})
             if not flag:
                 next_word = next_lex
-        print_word(next_word)
+        add_word_to_text(next_word)
         cur_word = next_word
-    print_word("\n")
+    add_word_to_text("\n")
 
 
 def main():
@@ -152,7 +152,7 @@ def main():
     data = pickle.load(model)
     model.close()
     if par.seed == "":
-        seed = random.sample(data[1].keys(), 1)[0]
+        seed = random.sample(data["lex"].keys(), 1)[0]
     else:
         seed = par.seed[0]
     if par.out[0] != "stdout":
