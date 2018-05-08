@@ -7,15 +7,13 @@ import pickle
 
 
 def add_word_to_text(word):
-    """print word
+    """добавить слово к тексту, если текст размером достиг максимума, вывести его
 
-    :param word: word (string)
+    :param word: слово (string)
     :return: nothing
     """
     if "text" not in dir(add_word_to_text):
         add_word_to_text.text = ""
-    if "max" not in dir(add_word_to_text):
-        add_word_to_text.max = 2000
     if word == "\n":
         print(add_word_to_text.text)
         add_word_to_text.text = ""
@@ -29,30 +27,41 @@ def add_word_to_text(word):
 
 
 def choose_word(data):
-    """choose a word from data
+    """выбрать следующее слово (или разбор) из базы
 
-    :param data: data (dict: {word: frequency...})
+    :param data: база (dict: {word: frequency...})
     :return: word (string)
     """
     if data == {}:
         return ""
     else:
-        new_words = [elem for elem in data]
-        total = sum(data.values())
-        probabilities = [elem / total for elem in data.values()]
-        return numpy.random.choice(new_words, 1, probabilities)[0]
+        return numpy.random.choice(list(data.keys()), 1,
+                                   list(data.values()))[0]
+
+
+def count_probabilities(data):
+    """посчитать вероятности для каждой пары слов. Они запишутся вместо частот
+
+    :param data: база (dict: {first_word: {second_word: frequency...}...})
+    :return: nothing
+    """
+    for first_word in data.keys():
+        total = sum(data[first_word].values())
+        for second_word in data[first_word].keys():
+            data[first_word][second_word] /= total
 
 
 def generate_text(data, seed, length, paragraph):
-    """generate a text from data
+    """сгенерировать текст из слов в базе
 
-    :param data: data (dict: {first_word: {second_word: frequency...}...})
-    :param seed: first word (string)
-    :param length: the number of words (int)
-    :param paragraph: the number of symbols in a paragraph (int)
+    :param data: база (dict: {first_word: {second_word: frequency...}...})
+    :param seed: первое слово (string)
+    :param length: количество слов в тексте (int)
+    :param paragraph: максимальное количество символов в абзаце (int)
     :return: nothing
     """
     cur_word = seed
+    count_probabilities(data)
     add_word_to_text.max = paragraph
     add_word_to_text(cur_word)
     for i in range(length - 1):
@@ -66,44 +75,48 @@ def generate_text(data, seed, length, paragraph):
 
 def generate_text_with_morphology(data_lex, data_morph, seed,
                                   length, paragraph):
-    """generate a text from data using morphology
+    """сгенерировать текст из слов в базе
 
-    :param data_lex: data (dict: {first_word: {second_word: frequency...}...})
-    :param data_morph: data (dict: {first_word: {morph: frequency...}...})
-    :param seed: first word (string)
-    :param length: the number of words (int)
-    :param paragraph: the number of symbols in a paragraph (int)
+    :param data_lex: база слов в начальной форме
+                (dict: {first_word: {second_word: frequency...}...})
+    :param data_morph: база слов и возможных форм второго слова
+                (dict: {first_word: {morph: frequency...}...})
+    :param seed: первое слово (string)
+    :param length: количество слов в тексте (int)
+    :param paragraph: максимальное количество символов в абзаце (int)
     :return: nothing
     """
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
+    count_probabilities(data_lex)
+    count_probabilities(data_morph)
     add_word_to_text.max = paragraph
     add_word_to_text(cur_word)
     for i in range(length - 1):
-        next_lex = choose_word(data_lex.get(cur_word, {}))
-        if next_lex == "":
+        next_inf = choose_word(data_lex.get(cur_word, {}))
+        if next_inf == "":
             next_word = random.sample(data_lex.keys(), 1)[0]
         else:
             next_lexemes = []
-            for elem in morph.parse(next_lex):
-                next_lexemes = next_lexemes + elem.lexeme
+            for elem in morph.parse(next_inf):
+                next_lexemes.append(elem.lexeme)
             morph_data = data_morph.get(cur_word, {})
-            flag = False
-            while (not flag) and morph_data != {}:
+            found = False
+            while (not found) and morph_data != {}:
                 next_morph = choose_word(morph_data)
                 next_morphemes = next_morph.split()
                 for lexeme in next_lexemes:
-                    flag = True
+                    found = True
                     for morpheme in next_morphemes:
                         if morpheme not in lexeme.tag:
-                            flag = False
+                            found = False
                             break
-                    if flag:
+                    if found:
                         next_word = lexeme.word
                         break
                 morph_data.pop(next_morph, {})
-            if not flag:
-                next_word = next_lex
+            if not found:
+                next_word = next_inf
         add_word_to_text(next_word)
         cur_word = next_word
     add_word_to_text("\n")
@@ -111,58 +124,43 @@ def generate_text_with_morphology(data_lex, data_morph, seed,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model ',
-                        action='store',
-                        nargs=1,
+    parser.add_argument('--model',
                         type=str,
                         required=True,
-                        help="path to the file where the model locates",
-                        dest='mod')
+                        help="path to the file where the model locates")
     parser.add_argument('--seed',
-                        action='store',
-                        nargs=1,
                         default='',
                         type=str,
-                        help="first word",
-                        dest='seed')
+                        help="first word")
     parser.add_argument('--length',
-                        action='store',
-                        nargs=1,
                         type=int,
                         required=True,
-                        help="length",
-                        dest='len')
+                        help="length")
     parser.add_argument('--paragraph',
-                        action='store',
-                        nargs=1,
                         default=[1000],
                         type=int,
                         required=False,
-                        help="the number of symbols in a paragraph",
-                        dest='par')
-    parser.add_argument('--output ',
-                        action='store',
-                        nargs=1,
+                        help="the number of symbols in a paragraph")
+    parser.add_argument('--output',
                         default=['stdout'],
                         type=str,
-                        help="path to the file where the text will locate",
-                        dest='out')
+                        help="path to the file where the text will locate")
     par = parser.parse_args()
-    model = open(par.mod[0], 'rb')
+    model = open(par.model, 'rb')
     data = pickle.load(model)
     model.close()
     if par.seed == "":
         seed = random.sample(data["lex"].keys(), 1)[0]
     else:
-        seed = par.seed[0]
-    if par.out[0] != "stdout":
-        sys.stdout = open(par.out[0], 'w')
+        seed = par.seed
+    if par.output != "stdout":
+        sys.stdout = open(par.output, 'w')
     if "morph" in data.keys():
         generate_text_with_morphology(data["lex"], data["morph"],
-                                      seed, par.len[0], par.par[0])
+                                      seed, par.length, par.paragraph)
     else:
-        generate_text(data["lex"], seed, par.len[0], par.par[0])
-    if par.out[0] != "stdout":
+        generate_text(data["lex"], seed, par.length, par.paragraph)
+    if par.output != "stdout":
         sys.stdout.close()
 
 
