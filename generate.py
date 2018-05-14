@@ -4,13 +4,16 @@ import pymorphy2
 import sys
 import argparse
 import pickle
+import collections
 
 
 def add_word_to_text(word):
-    """добавить слово к тексту, если текст размером достиг максимума, вывести его
+    """
+    Функция добавляет слово к тексту. Если количество символов стало больше
+    максимально возможного, текст выводится
 
     :param word: слово (string)
-    :return: nothing
+    :return: None
     """
     if "text" not in dir(add_word_to_text):
         add_word_to_text.text = ""
@@ -27,9 +30,9 @@ def add_word_to_text(word):
 
 
 def choose_word(data):
-    """выбрать следующее слово (или разбор) из базы
+    """Функция выбирает слово из базы с учетом его вероятности
 
-    :param data: база (dict: {word: frequency...})
+    :param data: база (defaultdict: {word: probability...})
     :return: word (string)
     """
     if data == {}:
@@ -40,34 +43,38 @@ def choose_word(data):
 
 
 def count_probabilities(data):
-    """посчитать вероятности для каждой пары слов. Они запишутся вместо частот
+    """Функция считает вероятности для каждой пары слов
 
-    :param data: база (dict: {first_word: {second_word: frequency...}...})
-    :return: nothing
+    :param data: база (defaultdict: {first_word:
+                {second_word: frequency...}...})
+    :return: defaultdict, в котором вместо частот записаны вероятности
     """
-    for first_word in data.keys():
-        total = sum(data[first_word].values())
-        for second_word in data[first_word].keys():
-            data[first_word][second_word] /= total
+    data_prob = data.copy()
+    for first_word in data_prob.keys():
+        total = sum(data_prob[first_word].values())
+        for second_word in data_prob[first_word].keys():
+            data_prob[first_word][second_word] /= total
+    return data_prob
 
 
 def generate_text(data, seed, length, paragraph):
-    """сгенерировать текст из слов в базе
+    """Функция генерирует текст из слов в базе
 
-    :param data: база (dict: {first_word: {second_word: frequency...}...})
+    :param data: база (defaultdict: {first_word:
+                {second_word: frequency...}...})
     :param seed: первое слово (string)
     :param length: количество слов в тексте (int)
     :param paragraph: максимальное количество символов в абзаце (int)
-    :return: nothing
+    :return: None
     """
     cur_word = seed
-    count_probabilities(data)
+    data_prob = count_probabilities(data)
     add_word_to_text.max = paragraph
     add_word_to_text(cur_word)
     for i in range(length - 1):
-        next_word = choose_word(data.get(cur_word, {}))
+        next_word = choose_word(data_prob.get(cur_word, {}))
         if next_word == "":
-            next_word = random.sample(data.keys(), 1)[0]
+            next_word = random.sample(data_prob.keys(), 1)[0]
         add_word_to_text(next_word)
         cur_word = next_word
     add_word_to_text("\n")
@@ -75,32 +82,39 @@ def generate_text(data, seed, length, paragraph):
 
 def generate_text_with_morphology(data_lex, data_morph, seed,
                                   length, paragraph):
-    """сгенерировать текст из слов в базе
+    """Функция генерирует текст из слов в базе с морфологией
+    Для текущего слова с помощью choose_word выбирается инфинитив следующего
+    слова. Затем перебираются возможные морфологические разботы следущего
+    слова. Если было найдено совпадение, слово записывается как текущее и
+    выбирается следующее слово. Из-за того, что точность pymorphy составляет
+    менне 80%, бывают случаи, когда разбор не может быть найден. В этом случае
+    просто запиывается инфинитив следующего слова.
+
 
     :param data_lex: база слов в начальной форме
-                (dict: {first_word: {second_word: frequency...}...})
+                (defaultdict: {first_word: {second_word: frequency...}...})
     :param data_morph: база слов и возможных форм второго слова
-                (dict: {first_word: {morph: frequency...}...})
+                (defaultdict: {first_word: {morph: frequency...}...})
     :param seed: первое слово (string)
     :param length: количество слов в тексте (int)
     :param paragraph: максимальное количество символов в абзаце (int)
-    :return: nothing
+    :return: None
     """
     morph = pymorphy2.MorphAnalyzer()
     cur_word = seed
-    count_probabilities(data_lex)
-    count_probabilities(data_morph)
+    data_lex_prob = count_probabilities(data_lex)
+    data_morph_prob = count_probabilities(data_morph)
     add_word_to_text.max = paragraph
     add_word_to_text(cur_word)
     for i in range(length - 1):
-        next_inf = choose_word(data_lex.get(cur_word, {}))
+        next_inf = choose_word(data_lex_prob.get(cur_word, {}))
         if next_inf == "":
-            next_word = random.sample(data_lex.keys(), 1)[0]
+            next_word = random.sample(data_lex_prob.keys(), 1)[0]
         else:
             next_lexemes = []
             for elem in morph.parse(next_inf):
                 next_lexemes.append(elem.lexeme)
-            morph_data = data_morph.get(cur_word, {})
+            morph_data = data_morph_prob.get(cur_word, {})
             found = False
             while (not found) and morph_data != {}:
                 next_morph = choose_word(morph_data)
@@ -122,6 +136,10 @@ def generate_text_with_morphology(data_lex, data_morph, seed,
     add_word_to_text("\n")
 
 
+def dd():
+    return collections.defaultdict(int)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model',
@@ -137,7 +155,7 @@ def main():
                         required=True,
                         help="length")
     parser.add_argument('--paragraph',
-                        default=[1000],
+                        default=1000,
                         type=int,
                         required=False,
                         help="the number of symbols in a paragraph")
@@ -153,7 +171,7 @@ def main():
         seed = random.sample(data["lex"].keys(), 1)[0]
     else:
         seed = par.seed
-    if par.output != "stdout":
+    if "stdout" not in par.output:
         sys.stdout = open(par.output, 'w')
     if "morph" in data.keys():
         generate_text_with_morphology(data["lex"], data["morph"],
